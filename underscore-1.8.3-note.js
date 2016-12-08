@@ -15,9 +15,12 @@
   var previousUnderscore = root._;
 
   // Save bytes in the minified (but not gzipped) version:
+  // 看了 hanzichi 的说法
+  // 缓存变量，便于压缩代码
   var ArrayProto = Array.prototype, ObjProto = Object.prototype, FuncProto = Function.prototype;
 
   // Create quick reference variables for speed access to core prototypes.
+  // 同样是缓存变量
   var
     push             = ArrayProto.push,
     slice            = ArrayProto.slice,
@@ -633,12 +636,13 @@
     }
     return result;
   };
-
+  
   // Generator function to create the findIndex and findLastIndex functions
   function createPredicateIndexFinder(dir) {
     return function(array, predicate, context) {
       predicate = cb(predicate, context);
       var length = getLength(array);
+      // 根据 dir 确定遍历的起始位置
       var index = dir > 0 ? 0 : length - 1;
       for (; index >= 0 && index < length; index += dir) {
         if (predicate(array[index], index, array)) return index;
@@ -653,6 +657,7 @@
 
   // Use a comparator function to figure out the smallest index at which
   // an object should be inserted so as to maintain order. Uses binary search.
+  // 往有序数组中插入元素，使用二分查找
   _.sortedIndex = function(array, obj, iteratee, context) {
     iteratee = cb(iteratee, context, 1);
     var value = iteratee(obj);
@@ -664,21 +669,29 @@
     return low;
   };
 
+  // already done
   // Generator function to create the indexOf and lastIndexOf functions
   function createIndexFinder(dir, predicateFind, sortedIndex) {
     return function(array, item, idx) {
       var i = 0, length = getLength(array);
       if (typeof idx == 'number') {
+        // 规定了查找位置的起始点，不能用二分查找了
+        // 正序 or 倒序
         if (dir > 0) {
             i = idx >= 0 ? idx : Math.max(idx + length, i);
         } else {
             length = idx >= 0 ? Math.min(idx + 1, length) : idx + length + 1;
         }
       } else if (sortedIndex && idx && length) {
+        // 用 sortedIndex 找到该 item 所在位置
         idx = sortedIndex(array, item);
+        // 如果在数组中找到了返回对应下标 否则为 -1
         return array[idx] === item ? idx : -1;
       }
+      // 判断 item 是否为 NaN
+      // 为啥不直接用 isNaN
       if (item !== item) {
+        // 这里 slice.call 就是最开始简化了的
         idx = predicateFind(slice.call(array, i, length), _.isNaN);
         return idx >= 0 ? idx + i : -1;
       }
@@ -1043,15 +1056,22 @@
     }
   };
 
+  // already done
   // Return a copy of the object only containing the whitelisted properties.
+  // 传入一个对象，返回满足第二个参数筛选的对象副本
   _.pick = function(object, oiteratee, context) {
     var result = {}, obj = object, iteratee, keys;
     if (obj == null) return result;
+    // 如果第二个参数是函数
     if (_.isFunction(oiteratee)) {
       keys = _.allKeys(obj);
       iteratee = optimizeCb(oiteratee, context);
     } else {
+      // flatten 将嵌套的数组展开
+      // 如果第二个参数不是函数，那么有可能是数组或者是并列的 key
+      // keys 是第二个参数的展开
       keys = flatten(arguments, false, false, 1);
+      // 迭代函数 相当于把第二个参数的不同情况转化成同一种处理方式
       iteratee = function(value, key, obj) { return key in obj; };
       obj = Object(obj);
     }
@@ -1082,6 +1102,7 @@
   // Creates an object that inherits from the given prototype object.
   // If additional properties are provided then they will be added to the
   // created object.
+  // 以第一个参数为 prototype，第二个参数为 own properties 构建对象
   _.create = function(prototype, props) {
     var result = baseCreate(prototype);
     if (props) _.extendOwn(result, props);
