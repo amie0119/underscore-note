@@ -73,6 +73,7 @@
       case 2: return function(value, other) {
         return func.call(context, value, other);
       };
+      // 如果没有指定 argCount 就进这个 case
       case 3: return function(value, index, collection) {
         return func.call(context, value, index, collection);
       };
@@ -276,6 +277,7 @@
 
   // Determine if at least one element in the object matches a truth test.
   // Aliased as `any`.
+  // 判断数组或者对象中是否有一个元素满足 predicate 函数中的条件
   _.some = _.any = function(obj, predicate, context) {
     predicate = cb(predicate, context);
     var keys = !isArrayLike(obj) && _.keys(obj),
@@ -306,6 +308,7 @@
   };
 
   // Convenience version of a common use case of `map`: fetching a property.
+  // pluck: 摘
   _.pluck = function(obj, key) {
     return _.map(obj, _.property(key));
   };
@@ -509,24 +512,33 @@
   };
 
   // Trim out all falsy values from an array.
+  // 过滤值为 false 的元素
   _.compact = function(array) {
     return _.filter(array, _.identity);
   };
 
   // Internal implementation of a recursive `flatten` function.
+  // shallow 决定是否是深度展开，false 深度展开
+  // 第四个参数决定从第几个元素开始展开
   var flatten = function(input, shallow, strict, startIndex) {
+    // output 目标数组
     var output = [], idx = 0;
     for (var i = startIndex || 0, length = getLength(input); i < length; i++) {
       var value = input[i];
       if (isArrayLike(value) && (_.isArray(value) || _.isArguments(value))) {
         //flatten current level of array or arguments object
         if (!shallow) value = flatten(value, shallow, strict);
+        // 非深度展开
         var j = 0, len = value.length;
+        // 为啥要先把长度加上呢？好像没有必要？
         output.length += len;
         while (j < len) {
           output[idx++] = value[j++];
         }
       } else if (!strict) {
+        // 在外部调用 _.flatten 时，strict 默认是 false，正常来说是一定是可以进到这个分支的
+        // 还有其他内部方法调用了 flatten，=，=
+        // 如果 strict 为 true 那 input 的非数组元素就被忽略了
         output[idx++] = value;
       }
     }
