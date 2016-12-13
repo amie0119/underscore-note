@@ -89,6 +89,8 @@
   // A mostly-internal function to generate callbacks that can be applied
   // to each element in a collection, returning the desired result — either
   // identity, an arbitrary callback, a property matcher, or a property accessor.
+  // 根据 value 的值确定迭代函数
+  // 在调用的时候如果能直接指导 iteratee 是函数的话就没必要调用 cb 了，直接 optimizeCb 就好
   var cb = function(value, context, argCount) {
     if (value == null) return _.identity;
     if (_.isFunction(value)) return optimizeCb(value, context, argCount);
@@ -377,6 +379,7 @@
 
   // Shuffle a collection, using the modern version of the
   // [Fisher-Yates shuffle](http://en.wikipedia.org/wiki/Fisher–Yates_shuffle).
+  // 用的是从前往后一次和任意位置交换的算法，可用数学归纳法证明
   _.shuffle = function(obj) {
     var set = isArrayLike(obj) ? obj : _.values(obj);
     var length = set.length;
@@ -421,11 +424,16 @@
   };
 
   // An internal function used for aggregate "group by" operations.
+  // 同样的是用一个函数实现功能相近的几个 api
+  // groupBy, indexBy, countBy
+  // [中间层] 的感觉 from hanzichi
   var group = function(behavior) {
     return function(obj, iteratee, context) {
       var result = {};
+      // 根据 iteratee 的值确定迭代函数
       iteratee = cb(iteratee, context);
       _.each(obj, function(value, index) {
+        // 如果 iteratee 是函数的话会进 optimizeCb 的 case3
         var key = iteratee(value, index, obj);
         behavior(result, value, key);
       });
@@ -827,6 +835,8 @@
   // as much as it can, without ever going more than once per `wait` duration;
   // but if you'd like to disable the execution on the leading edge, pass
   // `{leading: false}`. To disable execution on the trailing edge, ditto.
+  // 节流原理和去抖差不多，有所区别的是节流是每次触发事件的时候判断当前时间戳距离上次执行时间戳的
+  // 间隔是否满足要求，然后执行，并更新上次执行的时间戳
   _.throttle = function(func, wait, options) {
     var context, args, result;
     var timeout = null;
@@ -863,15 +873,29 @@
   // be triggered. The function will be called after it stops being called for
   // N milliseconds. If `immediate` is passed, trigger the function on the
   // leading edge, instead of the trailing.
+  // 函数去抖：连续事件触发结束后只执行一次
+  // wait 是事件结束后的时间间隔
+  // 如果 immediate 为 true 会立即触发忽视第二个参数
+  // https://github.com/jashkenas/underscore/blob/97cfcbcbbcedf544a13127dcca3e0ddad94ff830/underscore.js
+  // 完全被重写了哎 -，-
   _.debounce = function(func, wait, immediate) {
     var timeout, args, context, timestamp, result;
 
+    // 需要执行的方法 later
     var later = function() {
+      // 距上一次触发的时间间隔
       var last = _.now() - timestamp;
 
+      // 如果时间间隔小于设置的 wait 说明没有达到要求不会执行，也可以理解为连续事件还没结束吧
+      // last 应该不会小于0吧
       if (last < wait && last >= 0) {
+        // 继续设置定时器
+        // 话说原来设置的定时器呢？不用清吗
+        // 虽然前面的也不会满足执行条件
         timeout = setTimeout(later, wait - last);
       } else {
+        // 满足了要求可以执行
+        // 感觉设为 null 也没太大意义，前面的 timeout 执行过了 --不对，执行过了变量没释放
         timeout = null;
         if (!immediate) {
           result = func.apply(context, args);
@@ -880,13 +904,19 @@
       }
     };
 
+    // 为啥要再返回一个回调函数？
+    // 答：为了继续调用 debounce 作为回调函数传入参数
     return function() {
       context = this;
       args = arguments;
+      // 每次触发事件都会更新时间戳
       timestamp = _.now();
+      // 每次触发的时候会判断是否需要立即执行
       var callNow = immediate && !timeout;
+      // 第一次进入设置 setTimeout
       if (!timeout) timeout = setTimeout(later, wait);
       if (callNow) {
+        // 回调函数可能是有返回值的~
         result = func.apply(context, args);
         context = args = null;
       }
