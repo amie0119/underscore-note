@@ -835,34 +835,50 @@
   // as much as it can, without ever going more than once per `wait` duration;
   // but if you'd like to disable the execution on the leading edge, pass
   // `{leading: false}`. To disable execution on the trailing edge, ditto.
+  // doing
   // 节流原理和去抖差不多，有所区别的是节流是每次触发事件的时候判断当前时间戳距离上次执行时间戳的
   // 间隔是否满足要求，然后执行，并更新上次执行的时间戳
+  // options: {} leading 是配置是否需要响应事件刚开始的那次回调，trailing 是配置是否响应结束的那次回调
   _.throttle = function(func, wait, options) {
     var context, args, result;
     var timeout = null;
+    // 上一次执行回调函数的时间戳
     var previous = 0;
+    // 显然，没有传入 options 就是空对象
     if (!options) options = {};
+    // setTimeout 的回调函数
     var later = function() {
+      // leading 如果是 false 忽略刚开始的那次回调
       previous = options.leading === false ? 0 : _.now();
       timeout = null;
       result = func.apply(context, args);
       if (!timeout) context = args = null;
     };
+    // 每次监听事件都会触发这个函数
     return function() {
       var now = _.now();
+      // 如果 leading 为 true，不会执行这条；
+      // 如果 leading 为 false，并且不是第一次执行才会执行
       if (!previous && options.leading === false) previous = now;
+      // 计算距下一次执行还剩多久 小于等于0就可以执行了
       var remaining = wait - (now - previous);
       context = this;
       args = arguments;
+      // 去看了一下别人说的，remaining > wait 是客户端系统时间被调整过
       if (remaining <= 0 || remaining > wait) {
         if (timeout) {
+          // 请空定时器，这次的就结束啦
           clearTimeout(timeout);
           timeout = null;
         }
+        // 这次执行的时间对下一次来说就是上次的时间戳
         previous = now;
+        // 执行实际的回调函数
         result = func.apply(context, args);
         if (!timeout) context = args = null;
       } else if (!timeout && options.trailing !== false) {
+        // 如果已经存在定时器就不会进来
+        // 在这次时间间隔内的最后一次触发进入
         timeout = setTimeout(later, remaining);
       }
       return result;
@@ -873,6 +889,7 @@
   // be triggered. The function will be called after it stops being called for
   // N milliseconds. If `immediate` is passed, trigger the function on the
   // leading edge, instead of the trailing.
+  // already done
   // 函数去抖：连续事件触发结束后只执行一次
   // wait 是事件结束后的时间间隔
   // 如果 immediate 为 true 会立即触发忽视第二个参数
